@@ -15,7 +15,7 @@ void detectARtags(Image& image);
 
 int main()
 {
-	for(int i=1;i<=4;i++)
+	for(int i=0;i<=4;i++)
 	{
 		std::string name = "x";
 		name[0] = '0'+i;
@@ -29,6 +29,7 @@ int main()
 
 void detectARtags(Image& image)
 {
+	Image original = image;
 	// Convert to grayscale
 	image = grayscaleMax(image);
 	
@@ -41,15 +42,7 @@ void detectARtags(Image& image)
 	for(unsigned int i=0;i<gaussianKernel.size();i++)
 		gaussianKernel[i]/=273;
 	image = convolution(image, gaussianKernel);
-
-	// Taking first X derivative 
-	Image imagex = derivateAbs(image, true);
-	// Taking first Y derivative
-	Image imagey = derivateAbs(image, false);
-	// Merge derivatives
-	image = mergeMax(imagex, imagey);
-
-	// Simple threshold
-	image = threshold(image, 30);
+	image = computeEdgels(image, 20);
+	image = grayscaleToColor(image);
 }
 
