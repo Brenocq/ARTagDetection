@@ -1,5 +1,13 @@
+//--------------------------------------------------
+// Robot Simulator
+// helpers.h
+// Date: 01/10/2020
+// By Breno Cunha Queiroz
+//--------------------------------------------------
+#ifndef HELPERS_H
+#define HELPERS_H
+
 #include "svpng/svpng.h"
-#include "jpeglib.h"
 #include <iostream>
 #include <array>
 #include <fstream>
@@ -38,73 +46,31 @@ void populateImage(Image& image)
 //--------------------//
 void writePng(std::string fileName, Image image)
 {
-	if(image.channels!=3 && image.channels!=4)
+	Image output;
+	output.width = image.width;
+	output.height = image.height;
+	if(image.channels == 1)
+	{
+		output.channels = 3;
+		output.buffer = std::vector<unsigned char>(output.width*output.height*output.channels);
+		for(int y=0;y<image.height;y++)
+			for(int x=0;x<image.width;x++)
+			{
+				unsigned char val = image.buffer[y*image.width + x];
+				output.buffer[y*output.width*output.channels + x*output.channels + 0] = val;
+				output.buffer[y*output.width*output.channels + x*output.channels + 1] = val;
+				output.buffer[y*output.width*output.channels + x*output.channels + 2] = val;
+			}
+	}
+	else if(image.channels==3 || image.channels==4)
+		output = image;
+	else
 		return;
+
 	// Save png
 	FILE* fp = fopen(("../../output/"+fileName+".png").c_str(), "wb");
-	svpng(fp, image.width, image.height, image.buffer.data(), image.channels==3?0:1);
+	svpng(fp, output.width, output.height, output.buffer.data(), output.channels==3?0:1);
 	fclose(fp);
-}
-
-//--------------------//
-//------- JPEG -------//
-//--------------------//
-Image readJpeg(std::string fileName)
-{
-	Image image;	
-	int width, height;
-
-	jpeg_decompress_struct decInfo;
-	J_COLOR_SPACE colorSpace = JCS_RGB;
-
-	std::string path = std::string("../../gallery/")+fileName+std::string(".jpg");
-	std::cout << "PATH " << path << std::endl;
-  	struct jpeg_decompress_struct cinfo;
-  	FILE * infile;        /* source file */
-  	JSAMPARRAY buffer;        /* Output row buffer */
-  	int row_stride;       /* physical row width in output buffer */
-
-  	if ((infile = fopen(path.c_str(), "rb")) == NULL) {
-  	  fprintf(stderr, "can't open %s\n", fileName);
-  	  return image;
-  	}
-
-  	/* Now we can initialize the JPEG decompression object. */
-  	jpeg_create_decompress(&cinfo);
-
-  	/* Step 2: specify data source (eg, a file) */
-  	jpeg_stdio_src(&cinfo, infile);
-
-  	(void) jpeg_read_header(&cinfo, TRUE);
-
-  	// Here I want to only get raw bytes
-  	(void) jpeg_start_decompress(&cinfo);
-
-  	row_stride = cinfo.output_width * cinfo.output_components;
-  	/* Make a one-row-high sample array that will go away when done with image */
-  	buffer = (*cinfo.mem->alloc_sarray)
-  	  	((j_common_ptr) &cinfo, JPOOL_IMAGE, row_stride, 1);
-
-  	while (cinfo.output_scanline < cinfo.output_height) {
-
-  	  (void) jpeg_read_scanlines(&cinfo, buffer, 1);
-  	  /* Assume put_scanline_someplace wants a pointer and sample count. */
-  	  // put_scanline_someplace(buffer[0], row_stride);
-  	}
-
-  	/* Step 7: Finish decompression */
-
-  	(void) jpeg_finish_decompress(&cinfo);
-
-  	jpeg_destroy_decompress(&cinfo);
-
-  	fclose(infile);
-
-	image.width = width;
-	image.height = height;
-	image.channels = 3;
-	image.buffer = std::vector<unsigned char>(image.width*image.height*image.channels);
-	return image;
 }
 
 //--------------------//
@@ -135,21 +101,23 @@ Image readBmp(std::string fileName)
     //std::cout << "width: " << width << std::endl;
     //std::cout << "height: " << height << std::endl;
     //std::cout << "depth: " << depth << "-bit" << std::endl;
-
-    std::vector<char> img(dataOffset - HEADER_SIZE);
-    bmp.read(img.data(), img.size());
+    //std::cout << "channels: " << (int)image.channels << std::endl;
+    //std::vector<char> img(dataOffset - HEADER_SIZE);
+    //bmp.read(img.data(), img.size());
 
     auto dataSize = ((width * 3 + 3) & (~3)) * height;
+    std::vector<char> img(dataSize);
     img.resize(dataSize);
     bmp.read(img.data(), img.size());
     std::vector<unsigned char> buffer(dataSize);
 
-	for(int i=0;i<dataSize;i++)
-	{
-		buffer[i] = (unsigned char)(img[i]);//float(i)/dataSize*255;//
-	}
+	for(int y=0;y<height;y++)
+		for(int x=0;x<width*3;x++)
+			buffer[(height-y-1)*width*3+x] = (unsigned char)(img[y*width*3+x]);//float(i)/dataSize*255;//
 
 	image.buffer = buffer;
 
 	return image;
 }
+
+#endif// HELPERS_H

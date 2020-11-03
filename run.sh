@@ -14,4 +14,4 @@ echo "---------- Starting program ----------"
 echo "----------- Opening image ------------"
 # Machine specific
 cd ${DIR}/output
-feh test.png
+feh 1.png 2.png 3.png 4.png
