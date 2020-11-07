@@ -15,13 +15,11 @@ void detectARtags(Image& image);
 
 int main()
 {
-	for(int i=0;i<=4;i++)
+	for(int i=2;i<=2;i++)
 	{
-		std::string name = "x";
-		name[0] = '0'+i;
-		Image image = readBmp(name);
+		Image image = readBmp(std::to_string(i));
 		detectARtags(image);
-		writePng(name, image);
+		writePng(std::to_string(i), image);
 	}
 
 	return 0;
@@ -29,7 +27,7 @@ int main()
 
 void detectARtags(Image& image)
 {
-	Image original = image;
+	//Image original = image;
 	// Convert to grayscale
 	image = grayscaleMax(image);
 	
@@ -43,6 +41,8 @@ void detectARtags(Image& image)
 		gaussianKernel[i]/=273;
 	image = convolution(image, gaussianKernel);
 	image = computeEdgels(image, 20);
+	std::vector<Line> lines = computeLines(image);
 	image = grayscaleToColor(image);
+	image = drawLines(image, lines);
 }
 

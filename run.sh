@@ -5,13 +5,13 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 echo "-------------- Building --------------"
 mkdir --parents ${DIR}/build/linux
 cd ${DIR}/build/linux
-cmake ../..
+cmake -DCMAKE_BUILD_TYPE=Debug ../..
 make -j
 
 echo "---------- Starting program ----------"
-./program
+gdb ./program
 
 echo "----------- Opening image ------------"
 # Machine specific
 cd ${DIR}/output
-feh *.png
+feh 2.png

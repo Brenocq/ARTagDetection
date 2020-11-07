@@ -382,4 +382,119 @@ Image zhangSuen(Image image)
 	return image;
 }
 
+std::vector<bool> visited;
+Image imageToCompute;
+
+std::vector<Point> getRegion(Point point, unsigned char value)
+{
+	if(point.x<0 || point.y<0 || point.x>=imageToCompute.width || point.y>=imageToCompute.height)
+		return {};
+
+	unsigned char currVal = imageToCompute.buffer[point.y*imageToCompute.width + point.x];
+	int error = std::abs(currVal-value);
+	if(error>127)
+		error = 255-error;
+	if(currVal==0 || error > 50 || visited[point.y*imageToCompute.width+point.x])
+		return {};
+
+	visited[point.y*imageToCompute.width+point.x] = true;
+	std::vector<Point> reg1 = getRegion({point.x+1, point.y}, value);
+	std::vector<Point> reg2 = getRegion({point.x-1, point.y}, value);
+	std::vector<Point> reg3 = getRegion({point.x, point.y+1}, value);
+	std::vector<Point> reg4 = getRegion({point.x, point.y-1}, value);
+
+	std::vector<Point> result = {point};
+	result.insert(result.end(), reg1.begin(), reg1.end());
+	result.insert(result.end(), reg2.begin(), reg2.end());
+	result.insert(result.end(), reg3.begin(), reg3.end());
+	result.insert(result.end(), reg4.begin(), reg4.end());
+
+	return result;
+}
+
+std::vector<Line> computeLines(Image image)
+{
+	visited = std::vector<bool>(image.width*image.height);
+	imageToCompute = image;
+
+	std::cout << "Width " << imageToCompute.width << " height" << imageToCompute.height << std::endl;
+	std::vector<Line> lines;
+
+	for(int y=0;y<imageToCompute.height;y++)
+	{
+		for(int x=0;x<imageToCompute.width;x++)
+		{
+			if(!visited[y*imageToCompute.width+x])
+			{
+				unsigned char value = imageToCompute.getPixel(x,y);
+				if(value>0)
+				{
+					//std::cout << "Calculate region" << std::endl;
+					std::vector<Point> region = getRegion({x,y}, value);
+					Point further = region[0];
+					float distance =0;
+					for(auto point : region)
+					{
+						int dx = further.x-point.x;
+						int dy = further.y-point.y;
+						float dist = sqrt(dx*dx+dy*dy);
+						if(dist > distance)
+						{
+							further = point;
+							distance = dist;
+						}
+					}
+					lines.push_back({region[0], further});
+					//lines.push_back({{0,0}, {x,y}});
+					//std::cout << "Region: " << region.size() << std::endl;
+				}
+			}
+		}
+	}
+
+	visited.clear();
+
+	return lines;
+}
+
+Image drawLines(Image image, std::vector<Line> lines)
+{
+	// https://stackoverflow.com/questions/10060046/drawing-lines-with-bresenhams-line-algorithm
+	for(auto line : lines)
+	{
+		Point p0 = line.first;
+		Point p1 = line.second;
+		int dx = p1.x - p0.x;
+		int dy = p1.y - p0.y;
+
+		int dLong = abs(dx);
+		int dShort = abs(dy);
+
+		int offsetLong = dx > 0 ? 1 : -1;
+		int offsetShort = dy > 0 ? image.width : -image.width;
+
+		if(dLong < dShort)
+		{
+			std::swap(dShort, dLong);
+			std::swap(offsetShort, offsetLong);
+		}
+
+		int error = dLong/2;
+		int index = p0.y*image.width*image.channels + p0.x*image.channels;
+		const int offset[] = {offsetLong, offsetLong + offsetShort};
+		const int abs_d[]  = {dShort, dShort - dLong};
+		for(int i = 0; i <= dLong; ++i)
+		{
+			for(int c=0;c<image.channels;c++)
+				if(index+c<image.buffer.size())
+					image.buffer[index+c] = 255;
+
+			const int errorIsTooBig = error >= dLong;
+			index += offset[errorIsTooBig]*image.channels;
+			error += abs_d[errorIsTooBig];
+		}
+	}
+	return image;
+}
+
 #endif// IMG_PROC_H

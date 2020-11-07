@@ -25,6 +25,23 @@ struct Image
 	uint32_t width = 0;
 	uint32_t height = 0;
 	uint8_t channels = 3;
+
+	unsigned char getPixel(int x, int y, int c=0)
+	{
+		return buffer[y*width*channels + x*channels + c];
+	}
+};
+
+struct Point
+{
+	float x;
+	float y;
+};
+
+struct Line
+{
+	Point first;
+	Point second;
 };
 
 void populateImage(Image& image)
