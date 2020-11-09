@@ -75,6 +75,7 @@ Image computeEdgels(Image image, int thresh)
 			int dy = now-prevY;
 			if(dx>thresh || dy>thresh || dx<-thresh || dy<-thresh)
 			{
+				// TODO Use a lookup table (faster)
 				result.buffer[y*result.width + x] = std::atan2(dy, dx)*255./(M_PI*2);
 			}
 		}
@@ -394,9 +395,10 @@ std::vector<Point> getRegion(Point point, unsigned char value)
 	int error = std::abs(currVal-value);
 	if(error>127)
 		error = 255-error;
-	if(currVal==0 || error > 50 || visited[point.y*imageToCompute.width+point.x])
+	if(currVal==0 || error > 20 || visited[point.y*imageToCompute.width+point.x])
 		return {};
 
+	// 4 or 8 neighbors?
 	visited[point.y*imageToCompute.width+point.x] = true;
 	std::vector<Point> reg1 = getRegion({point.x+1, point.y}, value);
 	std::vector<Point> reg2 = getRegion({point.x-1, point.y}, value);
@@ -431,20 +433,59 @@ std::vector<Line> computeLines(Image image)
 				{
 					//std::cout << "Calculate region" << std::endl;
 					std::vector<Point> region = getRegion({x,y}, value);
-					Point further = region[0];
-					float distance =0;
+
+					// Ignore small regions
+					if((int)region.size()<20)
+						continue;
+
+					// Calculate principal axis
+					float w = 1.f;
+					float sumW = w*region.size();
+					float sumXsquare = 0;
+					float sumX = 0;
+					float sumYsquare = 0;
+					float sumY = 0;
+					float sumXY = 0;
+
+					int maxX = 0;
+					int maxY = 0;
+
 					for(auto point : region)
 					{
-						int dx = further.x-point.x;
-						int dy = further.y-point.y;
-						float dist = sqrt(dx*dx+dy*dy);
-						if(dist > distance)
-						{
-							further = point;
-							distance = dist;
-						}
+						sumXsquare += w*point.x*point.x;
+						sumX += w*point.x;
+						sumYsquare += w*point.y*point.y;
+						sumY += w*point.y;
+						sumXY += w*point.x*point.y;
+						maxX = std::max(float(maxX), point.x);
+						maxY = std::max(float(maxY), point.y);
 					}
-					lines.push_back({region[0], further});
+
+					// Compute center
+					Point center = {sumX/sumW, sumY/sumW};
+
+					// Compute eigen values
+					float a = sumXsquare-sumX*sumX/sumW;
+					float b = sumXY-sumX*sumY/sumW;
+					float c = sumYsquare-sumY*sumY/sumW;
+
+					float delta = sqrt((a-c)*(a-c)/4+b*b);
+					float Vs = (a+c)/2-delta;// Small eigen value
+					float Vl = (a+c)/2+delta;// Large eigen value
+
+					// Compute line angle
+					float lineAngle = atan2((Vl-a),b);
+
+					// Compute segument size
+					float dx = maxX-center.x;
+					float dy = maxY-center.y;
+					float size = sqrt(dx*dx + dy*dy);
+
+					Point extreme0 = {center.x+cos(lineAngle)*size, center.y+sin(lineAngle)*size};
+					Point extreme1 = {center.x+cos(M_PI+lineAngle)*size, center.y+sin(M_PI+lineAngle)*size};
+
+					for(auto point : region)
+						lines.push_back({extreme0,extreme1});
 					//lines.push_back({{0,0}, {x,y}});
 					//std::cout << "Region: " << region.size() << std::endl;
 				}
@@ -462,8 +503,8 @@ Image drawLines(Image image, std::vector<Line> lines)
 	// https://stackoverflow.com/questions/10060046/drawing-lines-with-bresenhams-line-algorithm
 	for(auto line : lines)
 	{
-		Point p0 = line.first;
-		Point p1 = line.second;
+		Point p0 = {int(line.first.x), int(line.first.y)};
+		Point p1 = {int(line.second.x), int(line.second.y)};
 		int dx = p1.x - p0.x;
 		int dy = p1.y - p0.y;
 
