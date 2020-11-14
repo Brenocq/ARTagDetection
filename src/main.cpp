@@ -7,15 +7,15 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "helpers.h"
-#include "imgProc.h"
+#include "helpers.hpp"
+#include "imgProc.hpp"
 
 
 void detectARtags(Image& image);
 
 int main()
 {
-	for(int i=2;i<=2;i++)
+	for(int i=1;i<=5;i++)
 	{
 		Image image = readBmp(std::to_string(i));
 		detectARtags(image);
@@ -42,7 +42,8 @@ void detectARtags(Image& image)
 	image = convolution(image, gaussianKernel);
 	image = computeEdgels(image, 20);
 	std::vector<Line> lines = computeLines(image);
+	std::vector<Quadrangle> quadrangles = computeQuadrangles(lines);
 	image = grayscaleToColor(image);
-	image = drawLines(image, lines);
+	image = drawQuadrangles(image, quadrangles);
 }
 
