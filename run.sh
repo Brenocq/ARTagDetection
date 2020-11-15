@@ -14,4 +14,4 @@ gdb ./program
 echo "----------- Opening image ------------"
 # Machine specific
 cd ${DIR}/output
-feh 2.png
+feh *.png

@@ -42,8 +42,10 @@ void detectARtags(Image& image)
 	image = convolution(image, gaussianKernel);
 	image = computeEdgels(image, 20);
 	std::vector<Line> lines = computeLines(image);
+	// TODO try to compelete fragmented lines
 	std::vector<Quadrangle> quadrangles = computeQuadrangles(lines);
 	image = grayscaleToColor(image);
 	image = drawQuadrangles(image, quadrangles);
+	//drawLines(image, lines);
 }
 

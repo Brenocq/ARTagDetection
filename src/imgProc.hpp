@@ -395,7 +395,7 @@ std::vector<Point> getRegion(Point point, unsigned char value)
 	int error = std::abs(currVal-value);
 	if(error>127)
 		error = 255-error;
-	if(currVal==0 || error > 30 || visited[point.y*imageToCompute.width+point.x])
+	if(currVal==0 || error > 25 || visited[point.y*imageToCompute.width+point.x])
 		return {};
 
 	// 4 or 8 neighbors?
@@ -449,6 +449,8 @@ std::vector<Line> computeLines(Image image)
 
 					int maxX = 0;
 					int maxY = 0;
+					int minX = 999999;
+					int minY = 999999;
 
 					for(auto point : region)
 					{
@@ -459,6 +461,8 @@ std::vector<Line> computeLines(Image image)
 						sumXY += w*point.x*point.y;
 						maxX = std::max(float(maxX), point.x);
 						maxY = std::max(float(maxY), point.y);
+						minX = std::min(float(minX), point.x);
+						minY = std::min(float(minY), point.y);
 					}
 
 					// Compute center
@@ -476,16 +480,41 @@ std::vector<Line> computeLines(Image image)
 					// Compute line angle
 					float lineAngle = atan2((Vl-a),b);
 
-					// Compute segument size (Approximation)
-					float dx = maxX-center.x;
-					float dy = maxY-center.y;
-					float size = sqrt(dx*dx + dy*dy);
-
 					// Straightness of the line (small is better)
 					float straightness = sqrt(Vs)/sqrt(Vl);
 
-					Point extreme0 = {center.x+cos(lineAngle)*size, center.y+sin(lineAngle)*size};
-					Point extreme1 = {center.x+cos(M_PI+lineAngle)*size, center.y+sin(M_PI+lineAngle)*size};
+					// Wrong orientation if not using lineAngle
+					bool tiltedRight = (lineAngle<M_PI/2 && lineAngle>0) || (lineAngle<-M_PI/2);
+					//Point extreme0 = {minX, tiltedRight ? minY : maxY};
+					//Point extreme1 = {maxX, !tiltedRight ? minY : maxY};
+					Point extreme0;
+					Point extreme1;
+					if(tiltedRight)
+					{
+						// Compute segment size (Approximation)
+						float dx = maxX-center.x;
+						float dy = maxY-center.y;
+						float sizeUp = sqrt(dx*dx + dy*dy);
+						dx = center.x-minX;
+						dy = center.y-minY;
+						float sizeDown = sqrt(dx*dx + dy*dy);
+
+						extreme0 = {center.x+cos(lineAngle)*sizeUp, center.y+sin(lineAngle)*sizeUp};
+						extreme1 = {center.x+cos(M_PI+lineAngle)*sizeDown, center.y+sin(M_PI+lineAngle)*sizeDown};
+					}
+					else
+					{
+						// Compute segment size (Approximation)
+						float dx = center.x-minX;
+						float dy = maxY-center.y;
+						float sizeUp = sqrt(dx*dx + dy*dy);
+						dx = maxX-center.x;
+						dy = center.y-minY;
+						float sizeDown = sqrt(dx*dx + dy*dy);
+
+						extreme0 = {center.x+cos(lineAngle)*sizeUp, center.y+sin(lineAngle)*sizeUp};
+						extreme1 = {center.x+cos(M_PI+lineAngle)*sizeDown, center.y+sin(M_PI+lineAngle)*sizeDown};
+					}
 
 					// Add line
 					lines.push_back({extreme0,extreme1});
@@ -603,28 +632,30 @@ std::vector<Quadrangle> findQuadrangles(std::vector<Line> lines, std::vector<std
 		if(!closed)
 			return {};
 
-		std::cout << "Index: " << 
-			currList[0] << " " << 
-			currList[1] << " " << 
-			currList[2] << " " << 
-			currList[3] << " " << 
-			std::endl;
+		//std::cout << "Index: " << 
+		//	currList[0] << " " << 
+		//	currList[1] << " " << 
+		//	currList[2] << " " << 
+		//	currList[3] << " " << 
+		//	std::endl;
 	
 		// Intersect lines to find points
 		std::vector<Point> interserctionPoints;
 
-		std::cout << "Quad: " << 
-			"(" << lines[currList[0]].p0.x << "," << lines[currList[0]].p0.y << ")-(" << lines[currList[0]].p1.x << "," << lines[currList[0]].p1.y << ") " << 
-			"(" << lines[currList[1]].p0.x << "," << lines[currList[1]].p0.y << ")-(" << lines[currList[1]].p1.x << "," << lines[currList[1]].p1.y << ") " << 
-			"(" << lines[currList[2]].p0.x << "," << lines[currList[2]].p0.y << ")-(" << lines[currList[2]].p1.x << "," << lines[currList[2]].p1.y << ") " << 
-			"(" << lines[currList[3]].p0.x << "," << lines[currList[3]].p0.y << ")-(" << lines[currList[3]].p1.x << "," << lines[currList[3]].p1.y << ") " << 
-			std::endl;
+		//std::cout << "Quad: " << 
+		//	"(" << lines[currList[0]].p0.x << "," << lines[currList[0]].p0.y << ")-(" << lines[currList[0]].p1.x << "," << lines[currList[0]].p1.y << ") " << 
+		//	"(" << lines[currList[1]].p0.x << "," << lines[currList[1]].p0.y << ")-(" << lines[currList[1]].p1.x << "," << lines[currList[1]].p1.y << ") " << 
+		//	"(" << lines[currList[2]].p0.x << "," << lines[currList[2]].p0.y << ")-(" << lines[currList[2]].p1.x << "," << lines[currList[2]].p1.y << ") " << 
+		//	"(" << lines[currList[3]].p0.x << "," << lines[currList[3]].p0.y << ")-(" << lines[currList[3]].p1.x << "," << lines[currList[3]].p1.y << ") " << 
+		//	std::endl;
 
 		std::vector<Line> quadLines = {lines[currList[0]], lines[currList[1]], lines[currList[2]], lines[currList[3]]};
 
 		// Check if it intersects with first and has no repeted line
 		result.push_back(getQuadFromLines(quadLines));
 	}
+
+	// TODO filter repeated quadrangles
 	
 	return result;
 }
@@ -632,7 +663,7 @@ std::vector<Quadrangle> findQuadrangles(std::vector<Line> lines, std::vector<std
 std::vector<Quadrangle> computeQuadrangles(std::vector<Line> lines)
 {
 	std::vector<std::vector<int>> connectedLines(lines.size());
-	float maxDist = 10;
+	float maxDist = 5;
 	float minDiffA = 0.5;
 
 	// Find connected lines
@@ -670,15 +701,15 @@ std::vector<Quadrangle> computeQuadrangles(std::vector<Line> lines)
 		}
 	}
 
-	for(int i=0; i<connectedLines.size();i++)
-	{
-		std::cout << i << "-> ";
-		for(int j=0; j<connectedLines[i].size();j++)
-		{
-			std::cout << connectedLines[i][j] << " ";
-		}
-		std::cout << std::endl;
-	}
+	//for(int i=0; i<connectedLines.size();i++)
+	//{
+	//	std::cout << i << "-> ";
+	//	for(int j=0; j<connectedLines[i].size();j++)
+	//	{
+	//		std::cout << connectedLines[i][j] << " ";
+	//	}
+	//	std::cout << std::endl;
+	//}
 
 	std::vector<Quadrangle> result = findQuadrangles(lines, connectedLines);
 
